@@ -12,13 +12,20 @@ public static class Asignador
     {
         var slots = original.Select(s => s.Clonar()).ToList();
         var anterior = original.ToDictionary(s => s.Id, s => s.IdMaestro);
-
         if (modo == ModoAsignacion.Reoptimizar)
             foreach (var s in slots.Where(s => s.Estado == EstadoSlot.Asignado))
             {
                 s.IdMaestro = null;
                 s.Estado = EstadoSlot.Pendiente;
             }
+        else
+        {
+            foreach (var s in slots.Where(s => s.Estado == EstadoSlot.Asignado))
+            {
+                s.IdMaestro = null;
+                s.Estado = EstadoSlot.Pendiente;
+            }
+        }
 
         // Lo que ya tiene maestro (Fijo, y Asignado en modo conservador) ocupa esa hora.
         var ocupados = slots.Where(s => s.IdMaestro.HasValue)

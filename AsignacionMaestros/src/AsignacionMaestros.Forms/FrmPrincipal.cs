@@ -1,8 +1,3 @@
-/* Mensaje de Diego:
- * Esta es la pantalla principal y todo el diseño de la interfaz está aquí. 
- * No hay nada más que tocar en el resto del proyecto, 
- * salvo que quieras cambiar la base de datos [algún valiente que quiera poner todos los nombres de profesores reales] o la lógica de asignación.
-*/
 using AsignacionMaestros.Core;
 using AsignacionMaestros.Forms.Datos;
 
@@ -12,69 +7,252 @@ public sealed class FrmPrincipal : Form
 {
     private readonly Repositorio _repo;
 
+    // ---------- Colores del diseño (cámbialos aquí) ----------
+    private static readonly Color ColFondo = Color.FromArgb(227, 237, 247);
+    private static readonly Color ColLateral = Color.FromArgb(185, 205, 224);
+    private static readonly Color ColAreaTarjetas = Color.FromArgb(214, 228, 242);
+    private static readonly Color ColTexto = Color.FromArgb(35, 55, 80);
+    private static readonly Color ColSeleccion = Color.FromArgb(255, 248, 220);
+
     private readonly ComboBox _cmbPeriodo = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 160 };
-    private readonly Button _btnAsignar = new() { Text = "Asignar pendientes", AutoSize = true };
-    private readonly Button _btnReoptimizar = new() { Text = "Reoptimizar todo", AutoSize = true };
-    private readonly Button _btnCambiar = new() { Text = "Cambiar maestro…", AutoSize = true, Enabled = false, Margin = new Padding(24, 3, 3, 3) };   // NUEVO
-    private readonly Button _btnDisponibilidad = new() { Text = "Disponibilidad…", AutoSize = true };   // NUEVO
-    private readonly Button _btnLimpiar = new() { Text = "Limpiar horarios", AutoSize = true, Margin = new Padding(24, 3, 3, 3) };
-    private readonly Button _btnRecargar = new() { Text = "Recargar", AutoSize = true };
-    private readonly ToolStripStatusLabel _lblEstado = new();
-    private readonly DataGridView _grid = new()
+
+    // Botones superiores (de colores)
+    private readonly Button _btnAsignar = Boton("Asignar automáticamente", Color.FromArgb(224, 181, 101));
+    private readonly Button _btnReoptimizar = Boton("Reoptimizar todo", Color.FromArgb(91, 181, 154));
+    private readonly Button _btnCambiar = Boton("Asignar maestro", Color.FromArgb(91, 127, 163));
+    private readonly Button _btnLimpiar = Boton("Reiniciar todo", Color.FromArgb(229, 83, 75));
+    private readonly Button _btnRecargar = Boton("Recarga", Color.FromArgb(122, 122, 122));
+
+    // Botones de la barra lateral
+    private readonly Button _btnVerMaestros = BotonLateral("👤  Ver maestros");
+    private readonly Button _btnEditar = BotonLateral("✏  Editar registro");
+
+    // Totales
+    private readonly Label _lblTotal = Cifra();
+    private readonly Label _lblAsignados = Cifra();
+    private readonly Label _lblPendientes = Cifra();
+
+    private readonly FlowLayoutPanel _tarjetas = new()
     {
-        Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
-        RowHeadersVisible = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect, MultiSelect = false,
-        AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+        Dock = DockStyle.Fill,
+        AutoScroll = true,
+        WrapContents = true,
+        Padding = new Padding(10),
+        BackColor = ColAreaTarjetas,
     };
-    // Datos cargados de la base de datos (IMPORTANTE HABER CORRIDO LOS 3 SCRIPTS ANTES DE EJECUTAR)
+    private readonly ToolTip _tip = new() { InitialDelay = 200 };
+
     private List<Slot> _slots = new();
     private List<Maestro> _maestros = new();
     private bool _cargando;
+    private int? _idSeleccionado;
 
     public FrmPrincipal(Repositorio repo)
     {
-        // Se inyecta el repositorio de datos para que la pantalla pueda cargar y guardar información
         _repo = repo;
         Text = "Asignación de maestros";
-        Size = new Size(1000, 640);
+        Size = new Size(1200, 720);
+        MinimumSize = new Size(900, 550);
         StartPosition = FormStartPosition.CenterScreen;
+        BackColor = ColFondo;
+        Font = new Font("Segoe UI", 10f);
+        _btnCambiar.Enabled = false;
 
-        // Se crean las columnas de la tabla
-        foreach (var titulo in new[] { "Paquete", "Materia", "Hora", "Maestro", "Estado", "Motivo" })
-            _grid.Columns.Add(titulo, titulo);
-        _grid.Columns["Motivo"]!.FillWeight = 300;
+        // ----- Barra lateral -----
+        var lateral = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Left,
+            Width = 210,
+            BackColor = ColLateral,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Padding = new Padding(10, 20, 10, 10),
+        };
+        lateral.Controls.Add(_btnVerMaestros);
+        lateral.Controls.Add(_btnEditar);
 
-        var panel = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(8) };
-        panel.Controls.Add(new Label { Text = "Periodo:", AutoSize = true, Margin = new Padding(0, 8, 4, 0) });
-        panel.Controls.Add(_cmbPeriodo);
-        panel.Controls.Add(_btnAsignar);
-        panel.Controls.Add(_btnReoptimizar);
-        panel.Controls.Add(_btnCambiar);   // NUEVO
-        panel.Controls.Add(_btnDisponibilidad);   // NUEVO
-        panel.Controls.Add(_btnLimpiar);
-        panel.Controls.Add(_btnRecargar);
+        // ----- Parte superior: botones + periodo -----
+        var botones = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 52, Padding = new Padding(10, 8, 0, 0) };
+        botones.Controls.AddRange(new Control[] { _btnAsignar, _btnReoptimizar, _btnCambiar, _btnLimpiar, _btnRecargar });
 
-        var barra = new StatusStrip();
-        barra.Items.Add(_lblEstado);
+        var periodo = new FlowLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(10, 6, 0, 0) };
+        periodo.Controls.Add(new Label { Text = "Periodo:", AutoSize = true, Margin = new Padding(0, 6, 6, 0), ForeColor = ColTexto });
+        periodo.Controls.Add(_cmbPeriodo);
 
-        Controls.Add(_grid);
-        Controls.Add(panel);
-        Controls.Add(barra);
+        var superior = new Panel { Dock = DockStyle.Top, Height = 92 };
+        superior.Controls.Add(periodo);   // Fill primero
+        superior.Controls.Add(botones);   // Top después
 
-        // Se configuran los eventos de la pantalla
+        // ----- Parte inferior: totales -----
+        var totales = new TableLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 80,
+            ColumnCount = 3,
+            BackColor = Color.White,
+            Padding = new Padding(10),
+        };
+        for (var i = 0; i < 3; i++) totales.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+        totales.Controls.Add(BloqueTotal("Total Slots", _lblTotal), 0, 0);
+        totales.Controls.Add(BloqueTotal("Asignados", _lblAsignados), 1, 0);
+        totales.Controls.Add(BloqueTotal("Total Pendientes", _lblPendientes), 2, 0);
+
+        // El orden importa: el último en agregarse se acomoda primero
+        Controls.Add(_tarjetas);
+        Controls.Add(totales);
+        Controls.Add(superior);
+        Controls.Add(lateral);
+
+        // ----- Eventos -----
         Load += (_, _) => CargarPeriodos();
         _cmbPeriodo.SelectedIndexChanged += (_, _) => { if (!_cargando) Recargar(); };
         _btnRecargar.Click += (_, _) => Recargar();
         _btnAsignar.Click += (_, _) => Ejecutar(ModoAsignacion.Conservador);
         _btnReoptimizar.Click += (_, _) => Ejecutar(ModoAsignacion.Reoptimizar);
-        _btnCambiar.Click += (_, _) => CambiarManual();                                                    // NUEVO
-        _grid.CellDoubleClick += (_, e) => { if (e.RowIndex >= 0) CambiarManual(); };                      // NUEVO
-        _grid.SelectionChanged += (_, _) => _btnCambiar.Enabled = _grid.CurrentRow?.Tag is Slot;          // NUEVO
-        _btnDisponibilidad.Click += (_, _) => VerDisponibilidad();   // NUEVO
+        _btnCambiar.Click += (_, _) => CambiarManual();
+        _btnEditar.Click += (_, _) => CambiarManual();
+        _btnVerMaestros.Click += (_, _) => VerDisponibilidad();
         _btnLimpiar.Click += (_, _) => Limpiar();
     }
 
     private PeriodoItem? PeriodoActual => _cmbPeriodo.SelectedItem as PeriodoItem;
+
+    // ---------- Fábricas de controles ----------
+    private static Button Boton(string texto, Color color)
+    {
+        var b = new Button
+        {
+            Text = texto,
+            AutoSize = true,
+            MinimumSize = new Size(160, 36),
+            BackColor = color,
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            Margin = new Padding(0, 0, 14, 0),
+            Cursor = Cursors.Hand,
+        };
+        b.FlatAppearance.BorderSize = 0;
+        return b;
+    }
+
+    private static Button BotonLateral(string texto)
+    {
+        var b = new Button
+        {
+            Text = texto,
+            Size = new Size(185, 42),
+            BackColor = Color.White,
+            ForeColor = ColTexto,
+            FlatStyle = FlatStyle.Flat,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(8, 0, 0, 0),
+            Margin = new Padding(0, 0, 0, 12),
+            Cursor = Cursors.Hand,
+        };
+        b.FlatAppearance.BorderColor = Color.FromArgb(200, 210, 222);
+        return b;
+    }
+
+    private static Label Cifra() => new()
+    {
+        AutoSize = true,
+        Font = new Font("Segoe UI", 16f, FontStyle.Bold),
+        ForeColor = ColTexto,
+        Text = "0",
+    };
+
+    private static Control BloqueTotal(string titulo, Label cifra)
+    {
+        var p = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        p.Controls.Add(new Label { Text = titulo, AutoSize = true, ForeColor = ColTexto });
+        p.Controls.Add(cifra);
+        return p;
+    }
+
+    // ---------- Tarjetas ----------
+    private Panel CrearTarjeta(Slot s)
+    {
+        var card = new Panel
+        {
+            Size = new Size(280, 190),
+            Margin = new Padding(10),
+            BackColor = Color.White,
+            BorderStyle = BorderStyle.FixedSingle,
+            Tag = s.Id,
+        };
+
+        card.Controls.Add(new Label
+        {
+            Text = $"🕗  {s.Hora}",
+            Location = new Point(10, 8),
+            AutoSize = true,
+            Font = new Font("Segoe UI", 15f, FontStyle.Bold),
+            ForeColor = ColTexto,
+        });
+        Fila(card, "Paquete", $"{s.Paquete}", 52);
+        Fila(card, "Materia", $"{s.Materia}", 80);
+        Fila(card, "Maestro", s.IdMaestro is null ? "Pendiente" : NombreMaestro(s.IdMaestro), 108);
+
+        var (texto, fondo, letra) = s.Estado switch
+        {
+            EstadoSlot.Asignado => ("✔ Asignado", Color.FromArgb(102, 204, 110), Color.Black),
+            EstadoSlot.Fijo => ("📌 Fijo", Color.FromArgb(150, 185, 225), Color.Black),
+            _ => ("⏳ Pendiente", Color.FromArgb(224, 181, 101), Color.Black),
+        };
+        card.Controls.Add(new Label { Text = "Estado", Location = new Point(10, 142), AutoSize = true, ForeColor = ColTexto });
+        var pill = new Label
+        {
+            Text = texto,
+            Location = new Point(95, 138),
+            Size = new Size(120, 28),
+            TextAlign = ContentAlignment.MiddleCenter,
+            BackColor = fondo,
+            ForeColor = letra,
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+        };
+        card.Controls.Add(pill);
+
+        // Motivo al pasar el mouse
+        if (!string.IsNullOrWhiteSpace(s.Motivo))
+        {
+            _tip.SetToolTip(pill, "Motivo: " + s.Motivo);
+            _tip.SetToolTip(card, "Motivo: " + s.Motivo);
+        }
+
+        ConectarClics(card, s.Id);
+        return card;
+    }
+
+    private static void Fila(Panel card, string titulo, string valor, int y)
+    {
+        card.Controls.Add(new Label { Text = titulo, Location = new Point(10, y), AutoSize = true, ForeColor = ColTexto });
+        card.Controls.Add(new Label
+        {
+            Text = valor,
+            Location = new Point(95, y),
+            Size = new Size(175, 24),
+            AutoEllipsis = true,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            ForeColor = Color.Black,
+        });
+    }
+
+    // Que el clic funcione en toda la tarjeta, no solo en el fondo
+    private void ConectarClics(Control c, int idSlot)
+    {
+        c.Click += (_, _) => Seleccionar(idSlot);
+        c.DoubleClick += (_, _) => { Seleccionar(idSlot); CambiarManual(); };
+        foreach (Control hijo in c.Controls) ConectarClics(hijo, idSlot);
+    }
+
+    private void Seleccionar(int idSlot)
+    {
+        _idSeleccionado = idSlot;
+        foreach (Control c in _tarjetas.Controls)
+            c.BackColor = c.Tag is int id && id == idSlot ? ColSeleccion : Color.White;
+        _btnCambiar.Enabled = true;
+    }
 
     // ---------- Cargar y mostrar datos ----------
     private void CargarPeriodos()
@@ -89,7 +267,6 @@ public sealed class FrmPrincipal : Form
         catch (Exception ex) { Error("No se pudo conectar a la base de datos", ex); }
     }
 
-    // Recarga los slots y maestros del periodo actual y los muestra en la tabla
     private void Recargar()
     {
         if (PeriodoActual is null) return;
@@ -102,27 +279,23 @@ public sealed class FrmPrincipal : Form
         catch (Exception ex) { Error("No se pudieron cargar los datos", ex); }
     }
 
-    // Muestra los slots en la tabla y actualiza el estado de la pantalla
     private void MostrarSlots()
     {
-        _grid.Rows.Clear();
-        foreach (var s in _slots)
-        {
-            var i = _grid.Rows.Add(s.Paquete, s.Materia, s.Hora, NombreMaestro(s.IdMaestro), s.Estado.ToString(), s.Motivo);
-            _grid.Rows[i].Tag = s;   // NUEVO: así la fila siempre sabe qué slot es, aunque el usuario ordene la tabla
-            _grid.Rows[i].DefaultCellStyle.BackColor = s.Estado switch
-            {
-                EstadoSlot.Asignado => Color.Honeydew,
-                EstadoSlot.Fijo => Color.AliceBlue,
-                _ => Color.MistyRose,
-            };
-        }
+        _tarjetas.SuspendLayout();
+        foreach (var c in _tarjetas.Controls.Cast<Control>().ToList()) c.Dispose();
+        _tarjetas.Controls.Clear();
+        foreach (var s in _slots) _tarjetas.Controls.Add(CrearTarjeta(s));
+        _tarjetas.ResumeLayout();
+
         var pend = _slots.Count(s => s.Estado == EstadoSlot.Pendiente);
-        _lblEstado.Text = $"{_slots.Count - pend} asignados · {pend} pendientes";
-        _btnCambiar.Enabled = _grid.CurrentRow?.Tag is Slot;   // NUEVO
+        _lblTotal.Text = _slots.Count.ToString();
+        _lblAsignados.Text = (_slots.Count - pend).ToString();
+        _lblPendientes.Text = pend.ToString();
+
+        if (_idSeleccionado is int id && _slots.Any(s => s.Id == id)) Seleccionar(id);
+        else { _idSeleccionado = null; _btnCambiar.Enabled = false; }
     }
 
-    // Devuelve el nombre del maestro con su clave, o "—" si no hay maestro
     private string NombreMaestro(int? id) =>
         id is int i && _maestros.FirstOrDefault(m => m.Id == i) is { } m ? $"{m.Clave} · {m.Nombre}" : "—";
 
@@ -138,13 +311,17 @@ public sealed class FrmPrincipal : Form
         catch (Exception ex) { Error("No se pudo asignar", ex); }
     }
 
-    // ---------- NUEVO: cambio manual ----------
+    // ---------- Cambio manual ----------
     private void CambiarManual()
     {
-        if (_grid.CurrentRow?.Tag is not Slot elegido) return;
+        if (_idSeleccionado is not int idElegido)
+        {
+            MessageBox.Show("Primero selecciona una tarjeta.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
         try
         {
-            var slot = _slots.First(s => s.Id == elegido.Id);
+            var slot = _slots.First(s => s.Id == idElegido);
             var opciones = AjusteManual.Opciones(_slots, _maestros, slot.Id);
 
             var situacion = slot.IdMaestro is null
@@ -204,7 +381,7 @@ public sealed class FrmPrincipal : Form
         return true;
     }
 
-    // ---------- NUEVO: disponibilidad de todos los maestros ----------
+    // ---------- Disponibilidad de todos los maestros ----------
     private void VerDisponibilidad()
     {
         try
@@ -255,7 +432,6 @@ public sealed class FrmPrincipal : Form
         catch (Exception ex) { Error("No se pudo limpiar", ex); }
     }
 
-    // Muestra un mensaje de error con el título y el mensaje de la excepción
     private void Error(string titulo, Exception ex) =>
         MessageBox.Show(ex.Message, titulo, MessageBoxButtons.OK, MessageBoxIcon.Error);
 }

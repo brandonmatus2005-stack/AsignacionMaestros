@@ -21,8 +21,11 @@ public sealed class FrmDisponibilidad : Form
     private readonly Label _lblResumen = new() { AutoSize = true, Margin = new Padding(16, 8, 0, 0) };
     private readonly FlowLayoutPanel _contenedor = new()
     {
-        Dock = DockStyle.Fill, AutoScroll = true, WrapContents = true,
-        FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(8),
+        Dock = DockStyle.Fill,
+        AutoScroll = true,
+        WrapContents = true,
+        FlowDirection = FlowDirection.LeftToRight,
+        Padding = new Padding(8),
     };
 
     public FrmDisponibilidad(
@@ -41,7 +44,8 @@ public sealed class FrmDisponibilidad : Form
 
         var leyenda = new Label
         {
-            AutoSize = true, Margin = new Padding(24, 8, 0, 0),
+            AutoSize = true,
+            Margin = new Padding(24, 8, 0, 0),
             Text = "✓ = disponible   ·   5A = ya asignado a ese grupo   ·   vacío = no puede a esa hora",
         };
         var panelSuperior = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(8) };
@@ -111,8 +115,10 @@ public sealed class FrmDisponibilidad : Form
             caja.Size = new Size(430, 70);
             caja.Controls.Add(new Label
             {
-                Text = "Sin disponibilidad registrada.", AutoSize = true,
-                Location = new Point(12, 30), ForeColor = Color.Gray,
+                Text = "Sin disponibilidad registrada.",
+                AutoSize = true,
+                Location = new Point(12, 30),
+                ForeColor = Color.Gray,
             });
             return caja;
         }
@@ -130,13 +136,18 @@ public sealed class FrmDisponibilidad : Form
 
         var grid = new DataGridView
         {
-            ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
-            AllowUserToResizeRows = false, AllowUserToResizeColumns = false,
-            RowHeadersVisible = false, ScrollBars = ScrollBars.None,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            AllowUserToResizeRows = false,
+            AllowUserToResizeColumns = false,
+            RowHeadersVisible = false,
+            ScrollBars = ScrollBars.None,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
             ColumnHeadersHeight = altoEncabezado,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
-            BackgroundColor = SystemColors.Window, BorderStyle = BorderStyle.FixedSingle,
+            BackgroundColor = SystemColors.Window,
+            BorderStyle = BorderStyle.FixedSingle,
         };
         grid.RowTemplate.Height = altoFila;
         grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.True;
@@ -145,15 +156,19 @@ public sealed class FrmDisponibilidad : Form
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
-            HeaderText = "Hora", Width = anchoHora, SortMode = DataGridViewColumnSortMode.NotSortable,
+            HeaderText = "Hora",
+            Width = anchoHora,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
         });
         foreach (var id in materiasIds)
         {
             var clave = _materias.TryGetValue(id, out var info) ? info.Clave : "";
             grid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                HeaderText = NombreMateria(id), ToolTipText = $"{clave} · {NombreMateria(id)}",
-                Width = anchoMateria, SortMode = DataGridViewColumnSortMode.NotSortable,
+                HeaderText = NombreMateria(id),
+                ToolTipText = $"{clave} · {NombreMateria(id)}",
+                Width = anchoMateria,
+                SortMode = DataGridViewColumnSortMode.NotSortable,
             });
         }
 
@@ -187,6 +202,11 @@ public sealed class FrmDisponibilidad : Form
         grid.Size = new Size(anchoHora + materiasIds.Count * anchoMateria + 3,
                              altoEncabezado + _bloques.Count * altoFila + 3);
         return grid;
+    }
+
+    private void InitializeComponent()
+    {
+
     }
 
     // La celda no cambia de color al hacer clic: es una vista, no un editor.

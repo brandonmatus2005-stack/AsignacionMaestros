@@ -10,8 +10,13 @@ public sealed class FrmCambioManual : Form
 {
     private readonly DataGridView _grid = new()
     {
-        Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
-        RowHeadersVisible = false, MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+        Dock = DockStyle.Fill,
+        ReadOnly = true,
+        AllowUserToAddRows = false,
+        AllowUserToDeleteRows = false,
+        RowHeadersVisible = false,
+        MultiSelect = false,
+        SelectionMode = DataGridViewSelectionMode.FullRowSelect,
         AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
     };
     private readonly Button _btnAplicar = new() { Text = "Aplicar", AutoSize = true, Enabled = false };
@@ -30,7 +35,10 @@ public sealed class FrmCambioManual : Form
 
         var lblSlot = new Label
         {
-            Text = slot, Dock = DockStyle.Top, Height = 34, Padding = new Padding(8, 8, 8, 0),
+            Text = slot,
+            Dock = DockStyle.Top,
+            Height = 34,
+            Padding = new Padding(8, 8, 8, 0),
             Font = new Font(Font, FontStyle.Bold),
         };
         var textoActual = situacionActual + (opciones.Count == 0
@@ -52,7 +60,10 @@ public sealed class FrmCambioManual : Form
 
         var botones = new FlowLayoutPanel
         {
-            Dock = DockStyle.Bottom, Height = 46, Padding = new Padding(6), FlowDirection = FlowDirection.RightToLeft,
+            Dock = DockStyle.Bottom,
+            Height = 46,
+            Padding = new Padding(6),
+            FlowDirection = FlowDirection.RightToLeft,
         };
         botones.Controls.Add(_btnCancelar);     // con RightToLeft, el primero queda a la derecha
         botones.Controls.Add(_btnAplicar);
@@ -84,6 +95,19 @@ public sealed class FrmCambioManual : Form
         DialogResult = DialogResult.OK;
     }
 
+    private void InitializeComponent()
+    {
+        SuspendLayout();
+        // 
+        // FrmCambioManual
+        // 
+        ClientSize = new Size(933, 451);
+        Name = "FrmCambioManual";
+        Load += FrmCambioManual_Load;
+        ResumeLayout(false);
+
+    }
+
     private static string NombreTipo(TipoOpcion tipo) => tipo switch
     {
         TipoOpcion.Libre => "Asignar (está libre)",
@@ -91,4 +115,9 @@ public sealed class FrmCambioManual : Form
         TipoOpcion.Reemplazo => "Reemplazar (deja otro pendiente)",
         _ => tipo.ToString(),
     };
+
+    private void FrmCambioManual_Load(object sender, EventArgs e)
+    {
+
+    }
 }

@@ -11,13 +11,19 @@ public sealed class FrmVistaPrevia : Form
 
         var lblResumen = new Label
         {
-            Text = resumen, Dock = DockStyle.Top, Height = 48,
-            Padding = new Padding(8), TextAlign = ContentAlignment.MiddleLeft,
+            Text = resumen,
+            Dock = DockStyle.Top,
+            Height = 48,
+            Padding = new Padding(8),
+            TextAlign = ContentAlignment.MiddleLeft,
         };
 
         var grid = new DataGridView
         {
-            Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, RowHeadersVisible = false,
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            RowHeadersVisible = false,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
         };
         foreach (var titulo in new[] { "Slot", "Antes", "Después", "Estado" })
@@ -27,7 +33,9 @@ public sealed class FrmVistaPrevia : Form
 
         var botones = new FlowLayoutPanel
         {
-            Dock = DockStyle.Bottom, Height = 46, Padding = new Padding(6),
+            Dock = DockStyle.Bottom,
+            Height = 46,
+            Padding = new Padding(6),
             FlowDirection = FlowDirection.RightToLeft,
         };
         var btnAplicar = new Button { Text = "Aplicar", DialogResult = DialogResult.OK, AutoSize = true };
@@ -40,5 +48,10 @@ public sealed class FrmVistaPrevia : Form
         Controls.Add(botones);
         AcceptButton = btnAplicar;
         CancelButton = btnCancelar;
+    }
+
+    private void InitializeComponent()
+    {
+
     }
 }
